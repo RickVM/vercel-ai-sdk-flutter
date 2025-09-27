@@ -1,5 +1,7 @@
 ## Contributions Are Welcome
 
+## This is NOT an official Vercel package. This bucket just implements vercel's [AI Sdk](https://ai-sdk.dev/)'s react lib - in flutter.
+
 # Flutter AI SDK
 
 Flutter package for consuming AI chat streams from a [Vercel AI SDK](https://ai-sdk.dev/) v5 backend.
