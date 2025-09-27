@@ -135,6 +135,6 @@ class _AuthenticatedChatTransport extends vercel.DefaultChatTransport {
       chat.sendMessage(input: vercel.SendText(trimmed, metadata: metadata)),
 ```
 
-<video controls src="media/example.mov" title="Title"></video>
+![example](media/example.gif)
 
 _In this example I use ui lib [flutter_chat_ui](https://flyer.chat/)_

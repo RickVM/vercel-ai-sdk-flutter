@@ -1,7 +1,7 @@
 name: vercel_ai_sdk
-description: "A new Flutter package project."
+description: "Consume apis that use https://ai-sdk.dev/"
 version: 0.0.1
-homepage:
+homepage: https://github.com/OrenSayag/vercel-ai-sdk-flutter
 
 environment:
   sdk: ^3.9.2
