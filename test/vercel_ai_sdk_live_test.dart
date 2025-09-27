@@ -5,6 +5,44 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vercel_ai_sdk/vercel_ai_sdk.dart';
 
+class CustomChatTransport extends DefaultChatTransport {
+  CustomChatTransport({required ChatTransportApiConfig apiConfig})
+    : super(apiConfig: apiConfig);
+
+  @override
+  Future<Stream<UiMessageChunk>> sendMessages({
+    required String chatId,
+    required List<UiMessage> messages,
+    Future<void>? abortSignal,
+    Map<String, Object?>? metadata,
+    Map<String, String>? headers,
+    Map<String, Object?>? body,
+    required ChatRequestTrigger trigger,
+    String? messageId,
+  }) async {
+    final timeZone = 'Asia/Jerusalem';
+
+    final Map<String, Object?> fullBody = {
+      if (body != null) ...body,
+      'timezone': timeZone,
+    };
+
+    // Optionally, modify/add headers (example: auth)
+    // final mergedHeaders = {...?headers, 'Authorization': 'Bearer your-auth-token'};
+
+    return super.sendMessages(
+      chatId: chatId,
+      messages: messages,
+      abortSignal: abortSignal,
+      metadata: metadata,
+      headers: headers, // Use mergedHeaders if modifying
+      body: fullBody,
+      trigger: trigger,
+      messageId: messageId,
+    );
+  }
+}
+
 Map<String, String>? _decodeHeaders(String? raw) {
   if (raw == null || raw.isEmpty) {
     return null;
@@ -35,20 +73,25 @@ void main() {
   test(
     'live stream produces assistant response',
     () async {
-      final headers =
-          _decodeHeaders(Platform.environment['VERCEL_AI_SDK_HEADERS_JSON']);
-      final body =
-          _decodeJsonMap(Platform.environment['VERCEL_AI_SDK_BODY_JSON']);
-      final metadata =
-          _decodeJsonMap(Platform.environment['VERCEL_AI_SDK_METADATA_JSON']);
+      final headers = _decodeHeaders(
+        Platform.environment['VERCEL_AI_SDK_HEADERS_JSON'],
+      );
+      final body = _decodeJsonMap(
+        Platform.environment['VERCEL_AI_SDK_BODY_JSON'],
+      );
+      final metadata = _decodeJsonMap(
+        Platform.environment['VERCEL_AI_SDK_METADATA_JSON'],
+      );
 
       final finishCompleter = Completer<UiMessage>();
       final errors = <Object>[];
 
+      const chatId = '1de72efa-678e-4cfe-8747-c5325e632594';
+
       final chat = Chat(
-        generateId: () => DateTime.now().microsecondsSinceEpoch.toString(),
+        generateId: () => chatId,
         state: ChatState(),
-        transport: DefaultChatTransport(
+        transport: CustomChatTransport(
           apiConfig: ChatTransportApiConfig(
             apiBaseUrl: baseUrl!,
             apiChatPath: chatPath!,
@@ -71,8 +114,9 @@ void main() {
         options: options,
       );
 
-      final message = await finishCompleter.future
-          .timeout(const Duration(seconds: 30));
+      final message = await finishCompleter.future.timeout(
+        const Duration(seconds: 30),
+      );
 
       final assistantText = message.parts
           .whereType<TextPart>()
@@ -81,12 +125,15 @@ void main() {
           .trim();
 
       expect(errors, isEmpty, reason: 'chat reported unexpected errors');
-      expect(assistantText, isNotEmpty,
-          reason: 'expected at least one text chunk from assistant');
+      expect(
+        assistantText,
+        isNotEmpty,
+        reason: 'expected at least one text chunk from assistant',
+      );
     },
     skip: shouldRun
         ? false
         : 'Set VERCEL_AI_SDK_LIVE_TEST=1, VERCEL_AI_SDK_BASE_URL, and '
-            'VERCEL_AI_SDK_CHAT_PATH (optionally *_JSON for headers/body) to run',
+              'VERCEL_AI_SDK_CHAT_PATH (optionally *_JSON for headers/body) to run',
   );
 }
