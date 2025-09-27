@@ -1,6 +1,6 @@
 ## Contributions Are Welcome
 
-## This is NOT an official Vercel package. This bucket just implements vercel's [AI Sdk](https://ai-sdk.dev/)'s react lib - in flutter.
+## This is NOT an official Vercel package. This package just implements vercel's [AI Sdk](https://ai-sdk.dev/)'s react lib - in flutter.
 
 # Flutter AI SDK
 
