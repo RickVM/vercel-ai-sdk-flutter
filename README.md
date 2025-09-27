@@ -136,5 +136,6 @@ class _AuthenticatedChatTransport extends vercel.DefaultChatTransport {
 ```
 
 ![example](media/example.gif)
+![alt text](media/image.png)
 
 _In this example I use ui lib [flutter_chat_ui](https://flyer.chat/)_
