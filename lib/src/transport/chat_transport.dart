@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/chat_models.dart';
 import '../models/chunks.dart';
@@ -42,11 +42,11 @@ abstract class ChatTransport {
 }
 
 class DefaultChatTransport implements ChatTransport {
-  DefaultChatTransport({required this.apiConfig, HttpClient? client})
-    : client = client ?? HttpClient();
+  DefaultChatTransport({required this.apiConfig, http.Client? client})
+    : client = client ?? http.Client();
 
   final ChatTransportApiConfig apiConfig;
-  final HttpClient client;
+  final http.Client client;
 
   @override
   Future<Stream<UiMessageChunk>> sendMessages({
@@ -77,16 +77,16 @@ class DefaultChatTransport implements ChatTransport {
     }
 
     final uri = _buildUri(apiConfig.apiBaseUrl, apiConfig.apiChatPath);
-    final request = await client.postUrl(uri);
-    request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+    final request = http.Request('POST', uri)
+      ..headers['content-type'] = 'application/json';
     if (headers != null) {
-      headers.forEach(request.headers.set);
+      request.headers.addAll(headers);
     }
-    request.add(utf8.encode(jsonEncode(payload)));
+    request.body = jsonEncode(payload);
 
-    final response = await request.close();
-    _assertSuccess(response);
-    return _parseEventStream(response);
+    final response = await client.send(request);
+    _assertSuccess(response.statusCode);
+    return _parseEventStream(response.stream);
   }
 
   @override
@@ -102,24 +102,23 @@ class DefaultChatTransport implements ChatTransport {
       throw TransportHttpException(400, 'Reconnect path is not set');
     }
     final uri = _buildUri(apiConfig.apiBaseUrl, reconnectPath);
-    final request = await client.getUrl(uri);
+    final request = http.Request('GET', uri);
     if (headers != null) {
-      headers.forEach(request.headers.set);
+      request.headers.addAll(headers);
     }
 
-    final response = await request.close();
-    if (response.statusCode == HttpStatus.noContent) {
+    final response = await client.send(request);
+    if (response.statusCode == _httpNoContent) {
       return null;
     }
-    _assertSuccess(response);
-    return _parseEventStream(response);
+    _assertSuccess(response.statusCode);
+    return _parseEventStream(response.stream);
   }
 
-  void _assertSuccess(HttpClientResponse response) {
-    if (response.statusCode < HttpStatus.ok ||
-        response.statusCode >= HttpStatus.multipleChoices) {
+  void _assertSuccess(int statusCode) {
+    if (statusCode < _httpOk || statusCode >= _httpMultipleChoices) {
       throw TransportHttpException(
-        response.statusCode,
+        statusCode,
         'Failed to fetch the chat response',
       );
     }
@@ -171,6 +170,10 @@ class DefaultChatTransport implements ChatTransport {
     return baseUri.resolve(path);
   }
 }
+
+const int _httpOk = 200;
+const int _httpMultipleChoices = 300;
+const int _httpNoContent = 204;
 
 class TransportHttpException implements Exception {
   TransportHttpException(this.statusCode, this.message);
