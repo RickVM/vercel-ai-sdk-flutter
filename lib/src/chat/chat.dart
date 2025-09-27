@@ -42,6 +42,7 @@ class Chat {
 
   late List<UiMessage> _messages;
   ActiveResponse? _activeResponse;
+  StreamSubscription<UiMessageChunk>? _activeStreamSubscription;
   int _autoSendRecursionCount = 0;
 
   ChatStatus get status => state.status;
@@ -171,8 +172,46 @@ class Chat {
         ),
       );
 
-      await for (final _ in processedStream) {
-        // Processing handled in _handleChunk
+      final streamCompleter = Completer<void>();
+      var wasCancelled = false;
+
+      late final StreamSubscription<UiMessageChunk> subscription;
+      subscription = processedStream.listen(
+        (_) {},
+        onError: (error, stackTrace) {
+          if (!streamCompleter.isCompleted) {
+            streamCompleter.completeError(error, stackTrace);
+          }
+        },
+        onDone: () {
+          if (!streamCompleter.isCompleted) {
+            streamCompleter.complete();
+          }
+        },
+      );
+
+      _activeStreamSubscription = subscription;
+      _activeResponse?.cancel = () async {
+        if (wasCancelled) {
+          return;
+        }
+        wasCancelled = true;
+        await subscription.cancel();
+        if (!streamCompleter.isCompleted) {
+          streamCompleter.complete();
+        }
+      };
+
+      try {
+        await streamCompleter.future;
+      } finally {
+        await subscription.cancel();
+        _activeStreamSubscription = null;
+      }
+
+      if (wasCancelled) {
+        _setStatus(ChatStatus.ready);
+        return;
       }
 
       if (thrownError != null) {
@@ -233,6 +272,26 @@ class Chat {
 
   void clearError() {
     state.clearError();
+  }
+
+  Future<void> cancelActiveResponse() async {
+    final active = _activeResponse;
+    if (active == null) {
+      return;
+    }
+
+    final cancel = active.cancel;
+    if (cancel != null) {
+      await cancel();
+      _activeStreamSubscription = null;
+    } else {
+      await _activeStreamSubscription?.cancel();
+      _activeStreamSubscription = null;
+    }
+
+    _removeMessageById(active.state.message.id);
+    _activeResponse = null;
+    _setStatus(ChatStatus.ready);
   }
 
   Future<void> _handleChunk(UiMessageChunk chunk) async {
@@ -655,6 +714,15 @@ class Chat {
         parts: <MessagePart>[],
       ),
     );
+  }
+
+  void _removeMessageById(String messageId) {
+    final index = _messages.indexWhere((message) => message.id == messageId);
+    if (index == -1) {
+      return;
+    }
+    _messages.removeAt(index);
+    _syncStateMessages();
   }
 
   void _syncStateMessages() {

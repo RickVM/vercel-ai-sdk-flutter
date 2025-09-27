@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'messages.dart';
@@ -54,7 +56,7 @@ class ActiveResponse {
   ActiveResponse({required this.state, this.cancel});
 
   StreamingUiMessageState state;
-  VoidCallback? cancel;
+  Future<void> Function()? cancel;
 }
 
 enum ChatStatus { submitted, streaming, ready, error }
