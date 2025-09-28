@@ -119,6 +119,7 @@ class _AuthenticatedChatTransport extends vercel.DefaultChatTransport {
       generateId: () => _uuid.v4(),
       onError: _handleChatError,
       onFinish: _handleChatFinish,
+      sendAutomaticallyWhen: vercel.lastAssistantMessageIsCompleteWithToolCalls,
     );
 
     _chatState?.removeListener(_handleChatStateChange);
