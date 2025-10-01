@@ -4,7 +4,7 @@ version: 0.0.1
 homepage: https://github.com/OrenSayag/vercel-ai-sdk-flutter
 
 environment:
-  sdk: ^3.9.2
+  sdk: ^3.5.0
   flutter: ">=1.17.0"
 
 dependencies:
