@@ -7,7 +7,7 @@ import 'package:vercel_ai_sdk/vercel_ai_sdk.dart';
 
 class CustomChatTransport extends DefaultChatTransport {
   CustomChatTransport({required ChatTransportApiConfig apiConfig})
-    : super(apiConfig: apiConfig);
+      : super(apiConfig: apiConfig);
 
   @override
   Future<Stream<UiMessageChunk>> sendMessages({
@@ -20,7 +20,7 @@ class CustomChatTransport extends DefaultChatTransport {
     required ChatRequestTrigger trigger,
     String? messageId,
   }) async {
-    final timeZone = 'Asia/Jerusalem';
+    final timeZone = 'Europe/Amsterdam';
 
     final Map<String, Object?> fullBody = {
       if (body != null) ...body,
@@ -65,8 +65,7 @@ Map<String, Object?>? _decodeJsonMap(String? raw) {
 void main() {
   final baseUrl = Platform.environment['VERCEL_AI_SDK_BASE_URL'];
   final chatPath = Platform.environment['VERCEL_AI_SDK_CHAT_PATH'];
-  final shouldRun =
-      Platform.environment['VERCEL_AI_SDK_LIVE_TEST'] == '1' &&
+  final shouldRun = Platform.environment['VERCEL_AI_SDK_LIVE_TEST'] == '1' &&
       baseUrl != null &&
       chatPath != null;
 
@@ -134,6 +133,6 @@ void main() {
     skip: shouldRun
         ? false
         : 'Set VERCEL_AI_SDK_LIVE_TEST=1, VERCEL_AI_SDK_BASE_URL, and '
-              'VERCEL_AI_SDK_CHAT_PATH (optionally *_JSON for headers/body) to run',
+            'VERCEL_AI_SDK_CHAT_PATH (optionally *_JSON for headers/body) to run',
   );
 }
