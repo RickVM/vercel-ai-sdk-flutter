@@ -13,11 +13,13 @@ class ChatTransportApiConfig {
     required this.apiBaseUrl,
     required this.apiChatPath,
     this.apiReconnectToStreamPath,
+    this.includeMessages = true,
   });
 
   final String apiBaseUrl;
   final String apiChatPath;
   final String? apiReconnectToStreamPath;
+  final bool includeMessages;
 }
 
 abstract class ChatTransport {
@@ -61,9 +63,11 @@ class DefaultChatTransport implements ChatTransport {
   }) async {
     final payload = <String, Object?>{
       'id': chatId,
-      'messages': messages.map((message) => message.toJson()).toList(),
       'trigger': trigger.wireValue,
     };
+    if (apiConfig.includeMessages) {
+      payload['messages'] = messages.map((message) => message.toJson()).toList();
+    }
     if (messageId != null) {
       payload['messageId'] = messageId;
     }
