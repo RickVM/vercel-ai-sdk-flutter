@@ -30,7 +30,8 @@ class _AuthenticatedChatTransport extends vercel.DefaultChatTransport {
   @override
   Future<Stream<vercel.UiMessageChunk>> sendMessages({
     required String chatId,
-    required List<vercel.UiMessage> messages,
+    List<vercel.UiMessage>? messages,
+    vercel.UiMessage? message,
     Future<void>? abortSignal,
     Map<String, Object?>? metadata,
     Map<String, String>? headers,
@@ -44,6 +45,7 @@ class _AuthenticatedChatTransport extends vercel.DefaultChatTransport {
     return super.sendMessages(
       chatId: chatId,
       messages: messages,
+      message: message,
       abortSignal: abortSignal,
       metadata: metadata,
       headers: mergedHeaders,

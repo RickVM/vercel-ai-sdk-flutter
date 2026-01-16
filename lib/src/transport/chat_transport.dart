@@ -13,19 +13,18 @@ class ChatTransportApiConfig {
     required this.apiBaseUrl,
     required this.apiChatPath,
     this.apiReconnectToStreamPath,
-    this.includeMessages = true,
   });
 
   final String apiBaseUrl;
   final String apiChatPath;
   final String? apiReconnectToStreamPath;
-  final bool includeMessages;
 }
 
 abstract class ChatTransport {
   Future<Stream<UiMessageChunk>> sendMessages({
     required String chatId,
-    required List<UiMessage> messages,
+    List<UiMessage>? messages,
+    UiMessage? message,
     Future<void>? abortSignal,
     Map<String, Object?>? metadata,
     Map<String, String>? headers,
@@ -45,7 +44,7 @@ abstract class ChatTransport {
 
 class DefaultChatTransport implements ChatTransport {
   DefaultChatTransport({required this.apiConfig, http.Client? client})
-    : client = client ?? http.Client();
+      : client = client ?? http.Client();
 
   final ChatTransportApiConfig apiConfig;
   final http.Client client;
@@ -53,7 +52,8 @@ class DefaultChatTransport implements ChatTransport {
   @override
   Future<Stream<UiMessageChunk>> sendMessages({
     required String chatId,
-    required List<UiMessage> messages,
+    List<UiMessage>? messages,
+    UiMessage? message,
     Future<void>? abortSignal,
     Map<String, Object?>? metadata,
     Map<String, String>? headers,
@@ -65,8 +65,12 @@ class DefaultChatTransport implements ChatTransport {
       'id': chatId,
       'trigger': trigger.wireValue,
     };
-    if (apiConfig.includeMessages) {
-      payload['messages'] = messages.map((message) => message.toJson()).toList();
+    if (messages != null) {
+      payload['messages'] =
+          messages.map((message) => message.toJson()).toList();
+    }
+    if (message != null) {
+      payload['message'] = message.toJson();
     }
     if (messageId != null) {
       payload['messageId'] = messageId;

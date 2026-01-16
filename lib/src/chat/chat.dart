@@ -148,6 +148,7 @@ class Chat {
         stream = await transport.sendMessages(
           chatId: id,
           messages: _messages,
+          message: lastMessage,
           abortSignal: null,
           metadata: input.options?.metadata,
           headers: input.options?.headers,

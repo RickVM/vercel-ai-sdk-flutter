@@ -11,7 +11,8 @@ class FakeTransport implements ChatTransport {
   @override
   Future<Stream<UiMessageChunk>> sendMessages({
     required String chatId,
-    required List<UiMessage> messages,
+    List<UiMessage>? messages,
+    UiMessage? message,
     Future<void>? abortSignal,
     Map<String, Object?>? metadata,
     Map<String, String>? headers,
@@ -19,7 +20,7 @@ class FakeTransport implements ChatTransport {
     required ChatRequestTrigger trigger,
     String? messageId,
   }) async {
-    capturedMessages = List.of(messages);
+    capturedMessages = messages == null ? null : List.of(messages);
     capturedTrigger = trigger;
     return Stream<UiMessageChunk>.fromIterable(chunks);
   }
