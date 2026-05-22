@@ -38,6 +38,106 @@ class TextPart implements MessagePart {
   }
 }
 
+MessagePart messagePartFromJson(Map<String, dynamic> json) {
+  final type = json['type'] as String? ?? '';
+  switch (type) {
+    case 'text':
+      return TextPart(
+        text: json['text'] as String? ?? '',
+        state: _messagePartStateFromJson(json['state']),
+        providerMetadata: json['providerMetadata'],
+      );
+    case 'reasoning':
+      return ReasoningPart(
+        text: json['text'] as String? ?? '',
+        state: _messagePartStateFromJson(json['state']),
+        providerMetadata: json['providerMetadata'],
+      );
+    case 'file':
+      return FilePart(
+        filename: json['filename'] as String?,
+        url: json['url'] as String? ?? '',
+        mediaType: json['mediaType'] as String? ?? '',
+        providerMetadata: json['providerMetadata'],
+      );
+    case 'source-url':
+      return SourceUrlPart(
+        sourceId: json['sourceId'] as String? ?? '',
+        url: json['url'] as String? ?? '',
+        title: json['title'] as String?,
+        providerMetadata: json['providerMetadata'],
+      );
+    case 'source-document':
+      return SourceDocumentPart(
+        sourceId: json['sourceId'] as String? ?? '',
+        mediaType: json['mediaType'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        filename: json['filename'] as String?,
+        providerMetadata: json['providerMetadata'],
+      );
+    case 'step-start':
+      return const StepStartPart();
+    case 'dynamic-tool':
+      return DynamicToolPart(
+        toolName: json['toolName'] as String? ?? '',
+        toolCallId: json['toolCallId'] as String? ?? '',
+        state: _toolCallStateFromJson(json['state']),
+        input: json['input'],
+        output: json['output'],
+        errorText: json['errorText'] as String?,
+        callProviderMetadata: json['callProviderMetadata'],
+        preliminary: json['preliminary'] as bool?,
+      );
+  }
+
+  if (type.startsWith('data-')) {
+    return DataPart(
+      dataName: type.substring('data-'.length),
+      data: json['data'],
+      id: json['id'] as String?,
+    );
+  }
+  if (type.startsWith('tool-')) {
+    return ToolPart(
+      toolName: type.substring('tool-'.length),
+      toolCallId: json['toolCallId'] as String? ?? '',
+      state: _toolCallStateFromJson(json['state']),
+      input: json['input'],
+      output: json['output'],
+      errorText: json['errorText'] as String?,
+      providerExecuted: json['providerExecuted'] as bool?,
+      callProviderMetadata: json['callProviderMetadata'],
+      preliminary: json['preliminary'] as bool?,
+    );
+  }
+
+  throw FormatException('Unsupported message part type: $type');
+}
+
+MessagePartState? _messagePartStateFromJson(Object? value) {
+  switch (value) {
+    case 'streaming':
+      return MessagePartState.streaming;
+    case 'done':
+      return MessagePartState.done;
+  }
+  return null;
+}
+
+ToolCallState _toolCallStateFromJson(Object? value) {
+  switch (value) {
+    case 'input-streaming':
+      return ToolCallState.inputStreaming;
+    case 'output-available':
+      return ToolCallState.outputAvailable;
+    case 'output-error':
+      return ToolCallState.outputError;
+    case 'input-available':
+    default:
+      return ToolCallState.inputAvailable;
+  }
+}
+
 class ReasoningPart implements MessagePart {
   ReasoningPart({this.text = '', this.state, this.providerMetadata});
 
@@ -334,6 +434,25 @@ class UiMessage {
       json['metadata'] = metadata;
     }
     return json;
+  }
+
+  static UiMessage fromJson(Map<String, dynamic> json) {
+    final roleValue = json['role'] as String? ?? 'user';
+    final partsJson = json['parts'];
+    final parts = partsJson is List
+        ? partsJson.whereType<Map>().map((part) => messagePartFromJson(Map<String, dynamic>.from(part))).toList()
+        : <MessagePart>[];
+    final metadataJson = json['metadata'];
+
+    return UiMessage(
+      id: json['id'] as String? ?? '',
+      role: UiMessageRole.values.firstWhere(
+        (role) => role.name == roleValue,
+        orElse: () => UiMessageRole.user,
+      ),
+      parts: parts,
+      metadata: metadataJson is Map ? Map<String, Object?>.from(metadataJson) : null,
+    );
   }
 
   bool isCompleteWithToolCalls() {

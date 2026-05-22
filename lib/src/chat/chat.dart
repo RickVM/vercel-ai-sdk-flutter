@@ -20,10 +20,9 @@ class Chat {
     ChatTransport? transport,
     ChatTransportApiConfig? defaultChatTransportApiConfig,
     this.maxToolCalls = 10,
-  }) : _generateId = generateId ?? _defaultIdGenerator,
-       state = state ?? ChatState(),
-       transport =
-           transport ?? _resolveTransport(defaultChatTransportApiConfig, id) {
+  })  : _generateId = generateId ?? _defaultIdGenerator,
+        state = state ?? ChatState(),
+        transport = transport ?? _resolveTransport(defaultChatTransportApiConfig, id) {
     this.id = id ?? _generateId();
     _messages = List.of(this.state.messages);
     _syncStateMessages();
@@ -230,8 +229,7 @@ class Chat {
       onFinish?.call(lastSessionMessage);
       _setStatus(ChatStatus.ready);
     } catch (error) {
-      if (error is ChatException &&
-          error.code == ChatExceptionCode.invalidLastSessionMessage) {
+      if (error is ChatException && error.code == ChatExceptionCode.invalidLastSessionMessage) {
         _setStatus(ChatStatus.ready);
       } else {
         onError?.call(error);
@@ -293,6 +291,11 @@ class Chat {
     _removeMessageById(active.state.message.id);
     _activeResponse = null;
     _setStatus(ChatStatus.ready);
+  }
+
+  void replaceMessages(List<UiMessage> messages) {
+    _messages = List.of(messages);
+    _syncStateMessages();
   }
 
   Future<void> _handleChunk(UiMessageChunk chunk) async {
@@ -390,9 +393,7 @@ class Chat {
     } else if (chunk is ToolInputDeltaChunk) {
       final toolPart = _findToolPart(active.state, chunk.toolCallId);
       if (toolPart != null) {
-        final current = toolPart.input is String
-            ? toolPart.input as String
-            : '';
+        final current = toolPart.input is String ? toolPart.input as String : '';
         toolPart.input = '$current${chunk.inputTextDelta}';
         shouldUpdateList = true;
       } else {
@@ -401,9 +402,7 @@ class Chat {
           chunk.toolCallId,
         );
         if (dynamicToolPart != null) {
-          final current = dynamicToolPart.input is String
-              ? dynamicToolPart.input as String
-              : '';
+          final current = dynamicToolPart.input is String ? dynamicToolPart.input as String : '';
           dynamicToolPart.input = '$current${chunk.inputTextDelta}';
           shouldUpdateList = true;
         }
@@ -620,9 +619,7 @@ class Chat {
     }
 
     final latest = lastMessage;
-    if (latest != null &&
-        latest.id == active.state.message.id &&
-        _messages.isNotEmpty) {
+    if (latest != null && latest.id == active.state.message.id && _messages.isNotEmpty) {
       _messages[_messages.length - 1] = active.state.message;
     } else {
       _messages.add(active.state.message);
