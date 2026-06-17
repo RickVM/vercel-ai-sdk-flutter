@@ -22,7 +22,8 @@ class Chat {
     this.maxToolCalls = 10,
   })  : _generateId = generateId ?? _defaultIdGenerator,
         state = state ?? ChatState(),
-        transport = transport ?? _resolveTransport(defaultChatTransportApiConfig, id) {
+        transport =
+            transport ?? _resolveTransport(defaultChatTransportApiConfig, id) {
     this.id = id ?? _generateId();
     _messages = List.of(this.state.messages);
     _syncStateMessages();
@@ -134,6 +135,7 @@ class Chat {
     _activeResponse = ActiveResponse(state: streamingState);
 
     Stream<UiMessageChunk>? stream;
+    Object? reportedError;
 
     try {
       if (input.trigger == ChatRequestTrigger.resumeStream) {
@@ -157,7 +159,6 @@ class Chat {
         );
       }
 
-      Object? thrownError;
       final processedStream = processUiMessageStream(
         ProcessUiMessageStreamOptions(
           stream: stream,
@@ -166,7 +167,7 @@ class Chat {
             await _handleChunk(chunk);
           },
           onError: (error) {
-            thrownError = error;
+            reportedError = error;
             onError?.call(error);
           },
         ),
@@ -214,8 +215,8 @@ class Chat {
         return;
       }
 
-      if (thrownError != null) {
-        throw thrownError!;
+      if (reportedError != null) {
+        throw reportedError!;
       }
 
       final lastSessionMessage = _activeResponse?.state.message ?? lastMessage;
@@ -229,10 +230,13 @@ class Chat {
       onFinish?.call(lastSessionMessage);
       _setStatus(ChatStatus.ready);
     } catch (error) {
-      if (error is ChatException && error.code == ChatExceptionCode.invalidLastSessionMessage) {
+      if (error is ChatException &&
+          error.code == ChatExceptionCode.invalidLastSessionMessage) {
         _setStatus(ChatStatus.ready);
       } else {
-        onError?.call(error);
+        if (!identical(error, reportedError)) {
+          onError?.call(error);
+        }
         _setStatus(ChatStatus.error, error: error);
       }
       rethrow;
@@ -370,8 +374,7 @@ class Chat {
     } else if (chunk is ReasoningPartFinishChunk) {
       // No-op
     } else if (chunk is ErrorChunk) {
-      onError?.call(Exception(chunk.errorText));
-      return;
+      throw Exception(chunk.errorText);
     } else if (chunk is ToolInputStartChunk) {
       if (chunk.isDynamic == true) {
         final dynamicToolPart = DynamicToolPart(
@@ -393,7 +396,8 @@ class Chat {
     } else if (chunk is ToolInputDeltaChunk) {
       final toolPart = _findToolPart(active.state, chunk.toolCallId);
       if (toolPart != null) {
-        final current = toolPart.input is String ? toolPart.input as String : '';
+        final current =
+            toolPart.input is String ? toolPart.input as String : '';
         toolPart.input = '$current${chunk.inputTextDelta}';
         shouldUpdateList = true;
       } else {
@@ -402,7 +406,9 @@ class Chat {
           chunk.toolCallId,
         );
         if (dynamicToolPart != null) {
-          final current = dynamicToolPart.input is String ? dynamicToolPart.input as String : '';
+          final current = dynamicToolPart.input is String
+              ? dynamicToolPart.input as String
+              : '';
           dynamicToolPart.input = '$current${chunk.inputTextDelta}';
           shouldUpdateList = true;
         }
@@ -619,7 +625,9 @@ class Chat {
     }
 
     final latest = lastMessage;
-    if (latest != null && latest.id == active.state.message.id && _messages.isNotEmpty) {
+    if (latest != null &&
+        latest.id == active.state.message.id &&
+        _messages.isNotEmpty) {
       _messages[_messages.length - 1] = active.state.message;
     } else {
       _messages.add(active.state.message);

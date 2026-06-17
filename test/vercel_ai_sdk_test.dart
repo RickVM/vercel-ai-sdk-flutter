@@ -67,4 +67,40 @@ void main() {
     expect(assistantText.text, 'Hello');
     expect(transport.capturedTrigger, ChatRequestTrigger.submitMessage);
   });
+
+  test('chat treats stream error chunks as request failures', () async {
+    final transport = FakeTransport([
+      const ErrorChunk(
+        errorText:
+            'Your credit balance is too low to access the Anthropic API.',
+      ),
+    ]);
+    final errors = <Object>[];
+
+    var counter = 0;
+    String generateId() => 'id-${counter++}';
+
+    final chat = Chat(
+      generateId: generateId,
+      state: ChatState(),
+      transport: transport,
+      onError: errors.add,
+    );
+
+    await expectLater(
+      chat.sendMessage(input: const SendText('Hi there')),
+      throwsA(
+        isA<Exception>().having(
+          (error) => error.toString(),
+          'message',
+          contains('credit balance'),
+        ),
+      ),
+    );
+
+    expect(chat.state.status, ChatStatus.error);
+    expect(chat.state.error, isA<Exception>());
+    expect(errors, hasLength(1));
+    expect(errors.single.toString(), contains('credit balance'));
+  });
 }

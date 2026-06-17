@@ -93,7 +93,7 @@ class DefaultChatTransport implements ChatTransport {
     request.body = jsonEncode(payload);
 
     final response = await client.send(request);
-    _assertSuccess(response.statusCode);
+    await _assertSuccess(response);
     return _parseEventStream(response.stream);
   }
 
@@ -119,17 +119,47 @@ class DefaultChatTransport implements ChatTransport {
     if (response.statusCode == _httpNoContent) {
       return null;
     }
-    _assertSuccess(response.statusCode);
+    await _assertSuccess(response);
     return _parseEventStream(response.stream);
   }
 
-  void _assertSuccess(int statusCode) {
+  Future<void> _assertSuccess(http.StreamedResponse response) async {
+    final statusCode = response.statusCode;
     if (statusCode < _httpOk || statusCode >= _httpMultipleChoices) {
+      final responseBody = await response.stream.bytesToString();
       throw TransportHttpException(
         statusCode,
-        'Failed to fetch the chat response',
+        _messageFromErrorBody(responseBody) ??
+            'Failed to fetch the chat response',
+        responseBody: responseBody,
       );
     }
+  }
+
+  String? _messageFromErrorBody(String responseBody) {
+    final trimmed = responseBody.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is String && decoded.trim().isNotEmpty) {
+        return decoded.trim();
+      }
+      if (decoded is Map<String, dynamic>) {
+        for (final key in const <String>['message', 'error', 'detail']) {
+          final value = decoded[key];
+          if (value is String && value.trim().isNotEmpty) {
+            return value.trim();
+          }
+        }
+      }
+    } on FormatException {
+      return trimmed;
+    }
+
+    return trimmed;
   }
 
   Stream<UiMessageChunk> _parseEventStream(
@@ -184,12 +214,18 @@ const int _httpMultipleChoices = 300;
 const int _httpNoContent = 204;
 
 class TransportHttpException implements Exception {
-  TransportHttpException(this.statusCode, this.message);
+  TransportHttpException(
+    this.statusCode,
+    this.message, {
+    this.responseBody,
+  });
 
   final int statusCode;
   final String message;
+  final String? responseBody;
 
   @override
-  String toString() =>
-      'TransportHttpException(statusCode: $statusCode, message: $message)';
+  String toString() {
+    return 'TransportHttpException(statusCode: $statusCode, message: $message)';
+  }
 }
